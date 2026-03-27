@@ -1,0 +1,150 @@
+<div class="header-bar">
+    <div class="header-left">
+        <div class="icon-square" style="background:#00d4aa;color:#0d1117;width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;">⬡</div>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;margin:0">Chains</h1>
+    </div>
+    <div style="color:#8892a4;font-size:12px;margin-bottom:12px">All wormhole mapping sessions · Create, manage, and archive chains</div>
+</div>
+
+<!-- Controls -->
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <select class="dark-select" id="filter-status" onchange="loadChains()">
+        <option value="">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="archived">Archived</option>
+        <option value="collapsed">Collapsed</option>
+    </select>
+    <button class="btn teal" onclick="showCreateModal()" style="margin-left:auto">+ New Chain</button>
+</div>
+
+<!-- Chains Table -->
+<table class="data-grid" id="chains-table">
+    <thead><tr>
+        <th>Name</th>
+        <th>Home System</th>
+        <th>Status</th>
+        <th>Nodes</th>
+        <th>Connections</th>
+        <th>Created</th>
+        <th>Updated</th>
+        <th>Actions</th>
+    </tr></thead>
+    <tbody id="chains-body">
+        <tr><td colspan="8" style="text-align:center;color:#6b7280;padding:30px">Loading...</td></tr>
+    </tbody>
+</table>
+
+<!-- Create Chain Modal -->
+<div id="create-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#111620;border:1px solid #1e2530;border-radius:4px;padding:20px;width:380px">
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:#00d4aa;margin:0 0 14px">New Chain</h3>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Chain Name *</label>
+            <input type="text" id="new-chain-name" placeholder="Chain 2026-03-27 Morning"
+                style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+        </div>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Home System</label>
+            <input type="text" id="new-chain-home" placeholder="J123456 or Jita"
+                style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+        </div>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Notes</label>
+            <input type="text" id="new-chain-notes" placeholder="Optional"
+                style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn muted" onclick="closeCreateModal()">Cancel</button>
+            <button class="btn teal" onclick="submitCreateChain()">Create Chain</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function statusPill(s) {
+        var colors = {active:'#00d4aa', archived:'#8892a4', collapsed:'#ef4444'};
+        var c = colors[s] || '#6b7280';
+        return '<span style="background:' + c + '20;color:' + c + ';border-radius:10px;padding:2px 8px;font-size:10px">' + s + '</span>';
+    }
+
+    window.loadChains = function() {
+        var status = document.getElementById('filter-status').value;
+        var url = '/api/chains' + (status ? '?status=' + encodeURIComponent(status) : '');
+        fetch(url)
+            .then(function(r){ return r.json(); })
+            .then(function(chains) {
+                var tbody = document.getElementById('chains-body');
+                if (!chains.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#6b7280;padding:30px">No chains found · <span style="color:#00d4aa;cursor:pointer" onclick="showCreateModal()">Create one →</span></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = chains.map(function(c) {
+                    return '<tr>'
+                        + '<td style="color:#00d4aa;font-weight:600;cursor:pointer" onclick="loadPanel(\'/chain-map/?chain=' + c.id + '\')">' + (c.name || '—') + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#8892a4">' + (c.home_system || '—') + '</td>'
+                        + '<td>' + statusPill(c.status) + '</td>'
+                        + '<td style="text-align:center">' + (c.node_count || 0) + '</td>'
+                        + '<td style="text-align:center">' + (c.connection_count || 0) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + fmtDate(c.created_at) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + fmtDate(c.updated_at) + '</td>'
+                        + '<td>'
+                        + '<button class="btn-sm teal" onclick="openMap(\'' + c.id + '\')">Map</button>'
+                        + (c.status === 'active' ? '<button class="btn-sm" style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none;margin-right:4px" onclick="archiveChain(\'' + c.id + '\',\'' + (c.name || '') + '\')">Archive</button>' : '')
+                        + '<button class="btn-sm" style="background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none" onclick="deleteChain(\'' + c.id + '\',\'' + (c.name || '') + '\')">Del</button>'
+                        + '</td>'
+                        + '</tr>';
+                }).join('');
+            }).catch(function(){});
+    };
+
+    window.openMap = function(chainId) {
+        loadPanel('/chain-map/?chain=' + chainId);
+    };
+
+    window.showCreateModal = function() {
+        var d = new Date().toISOString().slice(0, 10);
+        document.getElementById('new-chain-name').value = 'Chain ' + d;
+        document.getElementById('new-chain-home').value = '';
+        document.getElementById('new-chain-notes').value = '';
+        document.getElementById('create-modal').style.display = 'flex';
+        document.getElementById('new-chain-name').focus();
+    };
+    window.closeCreateModal = function() {
+        document.getElementById('create-modal').style.display = 'none';
+    };
+    window.submitCreateChain = function() {
+        var name = document.getElementById('new-chain-name').value.trim();
+        var home = document.getElementById('new-chain-home').value.trim();
+        var notes = document.getElementById('new-chain-notes').value.trim();
+        if (!name) { ewcmToast('Name required', 'error'); return; }
+        fetch('/api/chains', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name, home_system: home, notes: notes})
+        }).then(function(r){ return r.json(); })
+          .then(function(chain) {
+            closeCreateModal();
+            loadChains();
+            ewcmToast('Chain created', 'success');
+        }).catch(function(){ ewcmToast('Error creating chain', 'error'); });
+    };
+
+    window.archiveChain = function(chainId, name) {
+        if (!confirm('Archive chain "' + name + '"?')) return;
+        fetch('/api/chains/' + chainId + '/archive', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        }).then(function(){ loadChains(); ewcmToast('Archived', 'success'); })
+          .catch(function(){ ewcmToast('Error archiving chain', 'error'); });
+    };
+
+    window.deleteChain = function(chainId, name) {
+        if (!confirm('Permanently delete chain "' + name + '"? This cannot be undone.')) return;
+        fetch('/api/chains/' + chainId, {method: 'DELETE'})
+            .then(function(){ loadChains(); ewcmToast('Deleted', 'success'); })
+            .catch(function(){ ewcmToast('Error deleting chain', 'error'); });
+    };
+
+    loadChains();
+})();
+</script>

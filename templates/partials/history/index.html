@@ -1,0 +1,158 @@
+<div class="header-bar">
+    <div class="header-left">
+        <div class="icon-square" style="background:#6b7280;color:#0d1117;width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;">◎</div>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;margin:0">Chain History</h1>
+    </div>
+    <div style="color:#8892a4;font-size:12px;margin-bottom:12px">Archived wormhole chain snapshots · Immutable historical record</div>
+</div>
+
+<!-- Stats Row -->
+<div class="widget-grid" id="hist-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+    <div class="widget"><div class="widget-title">Chains Archived</div><div class="widget-value" id="hstat-total">—</div><div class="widget-sub">all time</div></div>
+    <div class="widget teal"><div class="widget-title">Systems Mapped</div><div class="widget-value" id="hstat-systems">—</div><div class="widget-sub">total nodes</div></div>
+    <div class="widget"><div class="widget-title">Connections</div><div class="widget-value" id="hstat-conns">—</div><div class="widget-sub">total links</div></div>
+    <div class="widget"><div class="widget-title">Avg Systems</div><div class="widget-value" id="hstat-avg-sys">—</div><div class="widget-sub">per chain</div></div>
+    <div class="widget"><div class="widget-title">Avg Duration</div><div class="widget-value" id="hstat-avg-dur">—</div><div class="widget-sub">minutes per chain</div></div>
+</div>
+
+<!-- History Table -->
+<table class="data-grid" id="history-table">
+    <thead><tr>
+        <th>Chain Name</th>
+        <th>Home System</th>
+        <th>Systems</th>
+        <th>Connections</th>
+        <th>Duration</th>
+        <th>Archived</th>
+        <th>Notes</th>
+        <th></th>
+    </tr></thead>
+    <tbody id="history-body">
+        <tr><td colspan="8" style="text-align:center;color:#6b7280;padding:30px">Loading...</td></tr>
+    </tbody>
+</table>
+
+<!-- Detail Modal -->
+<div id="hist-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#111620;border:1px solid #1e2530;border-radius:4px;padding:20px;width:640px;max-height:80vh;overflow-y:auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <h3 id="hist-detail-title" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:#00d4aa;margin:0"></h3>
+            <button onclick="closeHistDetail()" style="background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <div id="hist-detail-body"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function fmtDuration(min) {
+        if (!min) return '—';
+        if (min < 60) return min + 'm';
+        return Math.floor(min/60) + 'h ' + (min % 60) + 'm';
+    }
+
+    // Load stats
+    fetch('/api/history/stats')
+        .then(function(r){ return r.json(); })
+        .then(function(s) {
+            document.getElementById('hstat-total').textContent = s.total_chains || 0;
+            document.getElementById('hstat-systems').textContent = s.total_systems_mapped || 0;
+            document.getElementById('hstat-conns').textContent = s.total_connections || 0;
+            document.getElementById('hstat-avg-sys').textContent = s.avg_systems_per_chain ? Math.round(s.avg_systems_per_chain) : 0;
+            document.getElementById('hstat-avg-dur').textContent = s.avg_duration_minutes ? Math.round(s.avg_duration_minutes) : 0;
+        }).catch(function(){});
+
+    // Load history
+    window.loadHistory = function() {
+        fetch('/api/history')
+            .then(function(r){ return r.json(); })
+            .then(function(rows) {
+                var tbody = document.getElementById('history-body');
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#6b7280;padding:30px">No chain history yet · Archive a chain to see it here</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(function(h) {
+                    return '<tr>'
+                        + '<td style="color:#e6e8eb;font-weight:600">' + (h.chain_name || '—') + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#8892a4">' + (h.home_system || '—') + '</td>'
+                        + '<td style="text-align:center">' + (h.node_count || 0) + '</td>'
+                        + '<td style="text-align:center">' + (h.connection_count || 0) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + fmtDuration(h.duration_minutes) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + fmtDate(h.collapsed_at) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (h.notes || '—') + '</td>'
+                        + '<td>'
+                        + '<button class="btn-sm teal" onclick="viewHistDetail(\'' + h.id + '\')">View</button>'
+                        + '<button class="btn-sm" style="background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none" onclick="deleteHistEntry(\'' + h.id + '\')">Del</button>'
+                        + '</td>'
+                        + '</tr>';
+                }).join('');
+            }).catch(function(){});
+    };
+
+    window.viewHistDetail = function(histId) {
+        fetch('/api/history/' + histId)
+            .then(function(r){ return r.json(); })
+            .then(function(h) {
+                document.getElementById('hist-detail-title').textContent = h.chain_name || 'Chain Snapshot';
+                var nodes = h.nodes_data || [];
+                var conns = h.connections_data || [];
+                if (typeof nodes === 'string') nodes = JSON.parse(nodes);
+                if (typeof conns === 'string') conns = JSON.parse(conns);
+                var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">';
+                html += '<div style="background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Home</div><div style="font-family:\'Geist Mono\',monospace;color:#e6e8eb">' + (h.home_system || '—') + '</div></div>';
+                html += '<div style="background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:12px"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Archived</div><div style="font-size:12px;color:#8892a4">' + fmtDate(h.collapsed_at) + '</div></div>';
+                html += '</div>';
+                if (nodes.length) {
+                    html += '<div style="font-size:10px;color:#4b5563;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Systems (' + nodes.length + ')</div>';
+                    html += '<table class="data-grid" style="margin-bottom:16px"><thead><tr><th>System</th><th>Class</th><th>Static 1</th><th>Static 2</th><th>Effect</th><th>Home</th></tr></thead><tbody>';
+                    nodes.forEach(function(n) {
+                        var colors = {'C1':'#8b5cf6','C2':'#7c3aed','C3':'#6d28d9','C4':'#5b21b6','C5':'#4c1d95','C6':'#2e1065','HS':'#22c55e','LS':'#f59e0b','NS':'#ef4444','Thera':'#00d4aa'};
+                        var c = colors[n.wh_class] || '#6b7280';
+                        html += '<tr>'
+                            + '<td style="font-family:\'Geist Mono\',monospace;font-weight:600;color:#e6e8eb">' + (n.system_name || '?') + '</td>'
+                            + '<td><span style="background:' + c + '20;color:' + c + ';border-radius:4px;padding:2px 6px;font-size:10px">' + (n.wh_class || '?') + '</span></td>'
+                            + '<td style="font-size:11px;color:#a78bfa">' + (n.static1 || '—') + '</td>'
+                            + '<td style="font-size:11px;color:#a78bfa">' + (n.static2 || '—') + '</td>'
+                            + '<td style="font-size:11px;color:#8892a4">' + (n.effect || '—') + '</td>'
+                            + '<td>' + (n.is_home ? '<span style="color:#f59e0b">⌂</span>' : '—') + '</td>'
+                            + '</tr>';
+                    });
+                    html += '</tbody></table>';
+                }
+                if (conns.length) {
+                    html += '<div style="font-size:10px;color:#4b5563;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Connections (' + conns.length + ')</div>';
+                    html += '<table class="data-grid"><thead><tr><th>From</th><th>To</th><th>Type</th><th>Mass</th><th>Time</th><th>Sig From</th><th>Sig To</th></tr></thead><tbody>';
+                    conns.forEach(function(c) {
+                        var mc = c.mass_status === 'critical' ? '#ef4444' : c.mass_status === 'reduced' ? '#f59e0b' : '#22c55e';
+                        var tc = c.time_status === 'eol' ? '#f59e0b' : '#22c55e';
+                        html += '<tr>'
+                            + '<td style="font-size:11px;color:#e6e8eb">' + (c.from_system || c.from_node_id || '?') + '</td>'
+                            + '<td style="font-size:11px;color:#e6e8eb">' + (c.to_system || c.to_node_id || '?') + '</td>'
+                            + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#a78bfa">' + (c.wh_type || 'K162') + '</td>'
+                            + '<td><span style="background:' + mc + '20;color:' + mc + ';border-radius:10px;padding:2px 8px;font-size:10px">' + (c.mass_status || '—') + '</span></td>'
+                            + '<td><span style="background:' + tc + '20;color:' + tc + ';border-radius:10px;padding:2px 8px;font-size:10px">' + (c.time_status === 'eol' ? 'EOL' : 'Fresh') + '</span></td>'
+                            + '<td style="font-family:\'Geist Mono\',monospace;font-size:10px;color:#6b7280">' + (c.sig_id_from || '—') + '</td>'
+                            + '<td style="font-family:\'Geist Mono\',monospace;font-size:10px;color:#6b7280">' + (c.sig_id_to || '—') + '</td>'
+                            + '</tr>';
+                    });
+                    html += '</tbody></table>';
+                }
+                document.getElementById('hist-detail-body').innerHTML = html;
+                document.getElementById('hist-detail-modal').style.display = 'flex';
+            }).catch(function(){});
+    };
+
+    window.closeHistDetail = function() {
+        document.getElementById('hist-detail-modal').style.display = 'none';
+    };
+    window.deleteHistEntry = function(histId) {
+        if (!confirm('Delete this history entry? This cannot be undone.')) return;
+        fetch('/api/history/' + histId, {method: 'DELETE'})
+            .then(function(){ loadHistory(); ewcmToast('Deleted', 'success'); })
+            .catch(function(){ ewcmToast('Error', 'error'); });
+    };
+
+    loadHistory();
+})();
+</script>

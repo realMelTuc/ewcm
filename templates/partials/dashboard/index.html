@@ -1,0 +1,167 @@
+<div class="header-bar">
+    <div class="header-left">
+        <div class="icon-square" style="background:#00d4aa;color:#0d1117;width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;">⬡</div>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;margin:0">Dashboard</h1>
+    </div>
+    <div style="color:#8892a4;font-size:12px;margin-bottom:12px">Wormhole chain operations overview · Active chains, alerts, system registry</div>
+</div>
+
+<!-- Stats Row -->
+<div class="widget-grid" id="dash-stats" style="grid-template-columns:repeat(5,1fr)">
+    <div class="widget teal"><div class="widget-title">Active Chains</div><div class="widget-value" id="stat-active-chains">—</div><div class="widget-sub">currently mapping</div></div>
+    <div class="widget"><div class="widget-title">Active Systems</div><div class="widget-value" id="stat-active-nodes">—</div><div class="widget-sub">nodes in active chains</div></div>
+    <div class="widget"><div class="widget-title">Active Connections</div><div class="widget-value" id="stat-active-conns">—</div><div class="widget-sub">live wormhole links</div></div>
+    <div class="widget amber"><div class="widget-title">EOL Connections</div><div class="widget-value" id="stat-eol">—</div><div class="widget-sub">end of life</div></div>
+    <div class="widget danger"><div class="widget-title">Critical Mass</div><div class="widget-value" id="stat-critical">—</div><div class="widget-sub">mass critical (&lt;10%)</div></div>
+</div>
+
+<!-- Two-col layout -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+    <!-- Active Chains -->
+    <div>
+        <div class="section-header">
+            <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#fff;margin:0">Active Chains</h3>
+            <a style="font-size:11px;color:#00d4aa;cursor:pointer" onclick="loadPanel('/chains/')">View All →</a>
+        </div>
+        <table class="data-grid" id="active-chains-table">
+            <thead><tr>
+                <th>Chain</th><th>Home</th><th>Nodes</th><th>Conns</th><th>⚠</th>
+            </tr></thead>
+            <tbody id="active-chains-body">
+                <tr><td colspan="5" style="text-align:center;color:#6b7280;padding:20px">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- EOL / Critical Alerts -->
+    <div>
+        <div class="section-header">
+            <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#f59e0b;margin:0">⚠ Alerts</h3>
+            <a style="font-size:11px;color:#00d4aa;cursor:pointer" onclick="loadPanel('/connections/')">All Connections →</a>
+        </div>
+        <table class="data-grid" id="alerts-table">
+            <thead><tr>
+                <th>Route</th><th>Type</th><th>Mass</th><th>Time</th>
+            </tr></thead>
+            <tbody id="alerts-body">
+                <tr><td colspan="4" style="text-align:center;color:#6b7280;padding:20px">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Bottom: Recent Registry -->
+<div>
+    <div class="section-header">
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#fff;margin:0">Recently Visited Systems</h3>
+        <a style="font-size:11px;color:#00d4aa;cursor:pointer" onclick="loadPanel('/systems/')">System Registry →</a>
+    </div>
+    <table class="data-grid" id="registry-table">
+        <thead><tr>
+            <th>System</th><th>Class</th><th>Static 1</th><th>Static 2</th><th>Effect</th><th>Visits</th><th>Last Seen</th>
+        </tr></thead>
+        <tbody id="registry-body">
+            <tr><td colspan="7" style="text-align:center;color:#6b7280;padding:20px">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+(function() {
+    function whClassBadge(c) {
+        if (!c) return '<span style="color:#6b7280">—</span>';
+        var colors = {'C1':'#8b5cf6','C2':'#7c3aed','C3':'#6d28d9','C4':'#5b21b6','C5':'#4c1d95','C6':'#2e1065','HS':'#22c55e','LS':'#f59e0b','NS':'#ef4444','Thera':'#00d4aa'};
+        var bg = colors[c] || '#6b7280';
+        return '<span style="background:' + bg + '20;color:' + bg + ';border-radius:4px;padding:2px 6px;font-size:10px;font-family:\'Geist Mono\',monospace">' + c + '</span>';
+    }
+    function massPill(m) {
+        if (!m) return '—';
+        var c = m === 'critical' ? '#ef4444' : m === 'reduced' ? '#f59e0b' : '#22c55e';
+        return '<span style="background:' + c + '20;color:' + c + ';border-radius:10px;padding:2px 8px;font-size:10px">' + m + '</span>';
+    }
+    function timePill(t) {
+        if (!t) return '—';
+        var c = t === 'eol' ? '#f59e0b' : '#22c55e';
+        var label = t === 'eol' ? 'EOL' : 'Fresh';
+        return '<span style="background:' + c + '20;color:' + c + ';border-radius:10px;padding:2px 8px;font-size:10px">' + label + '</span>';
+    }
+
+    // Load stats
+    fetch('/api/dashboard/stats')
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            document.getElementById('stat-active-chains').textContent = d.active_chains || 0;
+            document.getElementById('stat-active-nodes').textContent = d.active_nodes || 0;
+            document.getElementById('stat-active-conns').textContent = d.active_connections || 0;
+            document.getElementById('stat-eol').textContent = d.eol_connections || 0;
+            document.getElementById('stat-critical').textContent = d.critical_connections || 0;
+        }).catch(function(){});
+
+    // Load active chains
+    fetch('/api/dashboard/active-chains')
+        .then(function(r){ return r.json(); })
+        .then(function(chains) {
+            var tbody = document.getElementById('active-chains-body');
+            if (!chains.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#6b7280;padding:20px">No active chains · <a style="color:#00d4aa;cursor:pointer" onclick="loadPanel(\'/chains/\')">Create one →</a></td></tr>';
+                return;
+            }
+            tbody.innerHTML = chains.map(function(c) {
+                var alerts = (c.critical_count || 0) + (c.eol_count || 0);
+                var alertCell = alerts > 0
+                    ? '<span style="background:#ef444420;color:#ef4444;border-radius:10px;padding:2px 8px;font-size:10px">' + alerts + '</span>'
+                    : '<span style="color:#6b7280">—</span>';
+                return '<tr style="cursor:pointer" onclick="loadPanel(\'/chain-map/?chain=' + c.id + '\')">' 
+                    + '<td style="color:#00d4aa;font-weight:600">' + (c.name || '—') + '</td>'
+                    + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#8892a4">' + (c.home_system || '—') + '</td>'
+                    + '<td style="text-align:center">' + (c.node_count || 0) + '</td>'
+                    + '<td style="text-align:center">' + (c.connection_count || 0) + '</td>'
+                    + '<td>' + alertCell + '</td>'
+                    + '</tr>';
+            }).join('');
+        }).catch(function(){});
+
+    // Load EOL/critical alerts
+    fetch('/api/dashboard/eol-connections')
+        .then(function(r){ return r.json(); })
+        .then(function(rows) {
+            var tbody = document.getElementById('alerts-body');
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#22c55e;padding:20px">✓ No active alerts</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map(function(r) {
+                return '<tr>'
+                    + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px">' + r.from_system + ' → ' + r.to_system + '</td>'
+                    + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#a78bfa">' + (r.wh_type || 'K162') + '</td>'
+                    + '<td>' + massPill(r.mass_status) + '</td>'
+                    + '<td>' + timePill(r.time_status) + '</td>'
+                    + '</tr>';
+            }).join('');
+        }).catch(function(){});
+
+    // Load recent registry
+    fetch('/api/dashboard/recent-registry')
+        .then(function(r){ return r.json(); })
+        .then(function(rows) {
+            var tbody = document.getElementById('registry-body');
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280;padding:20px">No systems in registry yet</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map(function(s) {
+                return '<tr>'
+                    + '<td style="font-family:\'Geist Mono\',monospace;font-weight:600;color:#e6e8eb">' + s.system_name + '</td>'
+                    + '<td>' + whClassBadge(s.wh_class) + '</td>'
+                    + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#a78bfa">' + (s.static1 || '—') + '</td>'
+                    + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#a78bfa">' + (s.static2 || '—') + '</td>'
+                    + '<td style="font-size:11px;color:#8892a4">' + (s.effect || '—') + '</td>'
+                    + '<td style="text-align:center;color:#6b7280">' + (s.visit_count || 0) + '</td>'
+                    + '<td style="font-size:11px;color:#6b7280">' + (s.last_visited_at ? fmtDate(s.last_visited_at) : '—') + '</td>'
+                    + '</tr>';
+            }).join('');
+        }).catch(function(){});
+})();
+</script>
