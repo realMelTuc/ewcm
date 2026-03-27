@@ -113,7 +113,7 @@
                 var alertCell = alerts > 0
                     ? '<span style="background:#ef444420;color:#ef4444;border-radius:10px;padding:2px 8px;font-size:10px">' + alerts + '</span>'
                     : '<span style="color:#6b7280">—</span>';
-                return '<tr style="cursor:pointer" onclick="loadPanel(\'/chain-map/?chain=' + c.id + '\')">' 
+                return '<tr style="cursor:pointer" onclick="loadPanel(\'/chain-map/?chain=' + c.id + '\')">'
                     + '<td style="color:#00d4aa;font-weight:600">' + (c.name || '—') + '</td>'
                     + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#8892a4">' + (c.home_system || '—') + '</td>'
                     + '<td style="text-align:center">' + (c.node_count || 0) + '</td>'

@@ -1,0 +1,216 @@
+<div class="header-bar">
+    <div class="header-left">
+        <div class="icon-square" style="background:#a78bfa;color:#0d1117;width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;">◈</div>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;margin:0">System Registry</h1>
+    </div>
+    <div style="color:#8892a4;font-size:12px;margin-bottom:12px">Known wormhole systems · Persistent reference data across all chains</div>
+</div>
+
+<!-- Filters + Add -->
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <input type="text" id="search-systems" class="search-input" placeholder="Search systems..." style="max-width:260px" oninput="loadSystems()">
+    <select id="filter-class" class="dark-select" onchange="loadSystems()">
+        <option value="">All Classes</option>
+        <option>C1</option><option>C2</option><option>C3</option>
+        <option>C4</option><option>C5</option><option>C6</option>
+        <option>HS</option><option>LS</option><option>NS</option><option>Thera</option>
+    </select>
+    <span id="systems-count" style="font-size:12px;color:#6b7280;margin-left:8px"></span>
+    <button class="btn teal" onclick="showAddModal()" style="margin-left:auto">+ Add System</button>
+</div>
+
+<!-- Systems Table -->
+<table class="data-grid" id="systems-table">
+    <thead><tr>
+        <th>System</th>
+        <th>Class</th>
+        <th>Static 1</th>
+        <th>Static 2</th>
+        <th>Effect</th>
+        <th>Region</th>
+        <th>Visits</th>
+        <th>Last Seen</th>
+        <th>Notes</th>
+        <th></th>
+    </tr></thead>
+    <tbody id="systems-body">
+        <tr><td colspan="10" style="text-align:center;color:#6b7280;padding:30px">Loading...</td></tr>
+    </tbody>
+</table>
+
+<!-- Add/Edit Modal -->
+<div id="sys-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#111620;border:1px solid #1e2530;border-radius:4px;padding:20px;width:420px">
+        <h3 id="sys-modal-title" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:#00d4aa;margin:0 0 14px">Add System</h3>
+        <input type="hidden" id="sys-edit-id">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:2">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">System Name *</label>
+                <input type="text" id="sys-name" placeholder="J123456"
+                    style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">WH Class</label>
+                <select id="sys-class" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+                    <option value="">?</option>
+                    <option>C1</option><option>C2</option><option>C3</option>
+                    <option>C4</option><option>C5</option><option>C6</option>
+                    <option>HS</option><option>LS</option><option>NS</option><option>Thera</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Static 1</label>
+                <input type="text" id="sys-static1" placeholder="C247"
+                    style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Static 2</label>
+                <input type="text" id="sys-static2" placeholder="B274"
+                    style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+        </div>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Effect</label>
+            <select id="sys-effect" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+                <option value="">None</option>
+                <option>Pulsar</option><option>Wolf-Rayet</option>
+                <option>Cataclysmic Variable</option><option>Magnetar</option>
+                <option>Black Hole</option><option>Red Giant</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Region</label>
+                <input type="text" id="sys-region" placeholder="Anoikis"
+                    style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+        </div>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Notes</label>
+            <input type="text" id="sys-notes" placeholder="Optional notes"
+                style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn muted" onclick="closeSysModal()">Cancel</button>
+            <button class="btn teal" id="sys-submit-btn" onclick="submitSystem()">Add System</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function whClassBadge(c) {
+        if (!c) return '<span style="color:#6b7280">—</span>';
+        var colors = {'C1':'#8b5cf6','C2':'#7c3aed','C3':'#6d28d9','C4':'#5b21b6','C5':'#4c1d95','C6':'#2e1065','HS':'#22c55e','LS':'#f59e0b','NS':'#ef4444','Thera':'#00d4aa'};
+        var bg = colors[c] || '#6b7280';
+        return '<span style="background:' + bg + '20;color:' + bg + ';border-radius:4px;padding:2px 6px;font-size:10px;font-family:\'Geist Mono\',monospace">' + c + '</span>';
+    }
+    function staticBadge(s) {
+        if (!s) return '<span style="color:#6b7280">—</span>';
+        return '<span style="color:#a78bfa;font-family:\'Geist Mono\',monospace;font-size:11px">' + s + '</span>';
+    }
+    function effectBadge(e) {
+        if (!e) return '<span style="color:#6b7280">—</span>';
+        var colors = {'Pulsar':'#00d4aa','Wolf-Rayet':'#f59e0b','Magnetar':'#ef4444','Black Hole':'#60a5fa','Red Giant':'#fb923c','Cataclysmic Variable':'#c084fc'};
+        var c = colors[e] || '#8892a4';
+        return '<span style="color:' + c + ';font-size:11px">' + e + '</span>';
+    }
+
+    window.loadSystems = function() {
+        var q = document.getElementById('search-systems').value.trim();
+        var cls = document.getElementById('filter-class').value;
+        var url = '/api/systems?q=' + encodeURIComponent(q) + '&wh_class=' + encodeURIComponent(cls);
+        fetch(url)
+            .then(function(r){ return r.json(); })
+            .then(function(rows) {
+                document.getElementById('systems-count').textContent = rows.length + ' systems';
+                var tbody = document.getElementById('systems-body');
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#6b7280;padding:30px">No systems found</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(function(s) {
+                    return '<tr>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-weight:600;color:#e6e8eb">' + (s.system_name || '?') + '</td>'
+                        + '<td>' + whClassBadge(s.wh_class) + '</td>'
+                        + '<td>' + staticBadge(s.static1) + '</td>'
+                        + '<td>' + staticBadge(s.static2) + '</td>'
+                        + '<td>' + effectBadge(s.effect) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + (s.region || '—') + '</td>'
+                        + '<td style="text-align:center;color:#6b7280">' + (s.visit_count || 0) + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + (s.last_visited_at ? fmtDate(s.last_visited_at) : '—') + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (s.notes || '') + '">' + (s.notes || '—') + '</td>'
+                        + '<td>'
+                        + '<button class="btn-sm teal" onclick="editSystem(\'' + s.id + '\',this)" data-sys=\'' + JSON.stringify(s).replace(/'/g,'&#39;') + '\'>Edit</button>'
+                        + '<button class="btn-sm" style="background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none" onclick="deleteSystem(\'' + s.id + '\',\'' + (s.system_name || '') + '\')">Del</button>'
+                        + '</td>'
+                        + '</tr>';
+                }).join('');
+            }).catch(function(){});
+    };
+
+    window.showAddModal = function() {
+        document.getElementById('sys-edit-id').value = '';
+        document.getElementById('sys-modal-title').textContent = 'Add System';
+        document.getElementById('sys-submit-btn').textContent = 'Add System';
+        ['sys-name','sys-static1','sys-static2','sys-region','sys-notes'].forEach(function(id){ document.getElementById(id).value = ''; });
+        document.getElementById('sys-class').value = '';
+        document.getElementById('sys-effect').value = '';
+        document.getElementById('sys-modal').style.display = 'flex';
+        document.getElementById('sys-name').focus();
+    };
+
+    window.editSystem = function(sysId, btn) {
+        var data = JSON.parse(btn.closest('tr').querySelector('[data-sys]').dataset.sys);
+        document.getElementById('sys-edit-id').value = sysId;
+        document.getElementById('sys-modal-title').textContent = 'Edit System';
+        document.getElementById('sys-submit-btn').textContent = 'Save Changes';
+        document.getElementById('sys-name').value = data.system_name || '';
+        document.getElementById('sys-class').value = data.wh_class || '';
+        document.getElementById('sys-static1').value = data.static1 || '';
+        document.getElementById('sys-static2').value = data.static2 || '';
+        document.getElementById('sys-effect').value = data.effect || '';
+        document.getElementById('sys-region').value = data.region || '';
+        document.getElementById('sys-notes').value = data.notes || '';
+        document.getElementById('sys-modal').style.display = 'flex';
+    };
+
+    window.closeSysModal = function() {
+        document.getElementById('sys-modal').style.display = 'none';
+    };
+
+    window.submitSystem = function() {
+        var editId = document.getElementById('sys-edit-id').value;
+        var payload = {
+            system_name: document.getElementById('sys-name').value.trim(),
+            wh_class: document.getElementById('sys-class').value || null,
+            static1: document.getElementById('sys-static1').value.trim() || null,
+            static2: document.getElementById('sys-static2').value.trim() || null,
+            effect: document.getElementById('sys-effect').value || null,
+            region: document.getElementById('sys-region').value.trim() || null,
+            notes: document.getElementById('sys-notes').value.trim() || null,
+        };
+        if (!payload.system_name) { ewcmToast('System name required', 'error'); return; }
+        var method = editId ? 'PUT' : 'POST';
+        var url = editId ? '/api/systems/' + editId : '/api/systems';
+        fetch(url, {method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)})
+            .then(function(r){ return r.json(); })
+            .then(function() {
+                closeSysModal();
+                loadSystems();
+                ewcmToast(editId ? 'System updated' : 'System added', 'success');
+            }).catch(function(){ ewcmToast('Error saving system', 'error'); });
+    };
+
+    window.deleteSystem = function(sysId, name) {
+        if (!confirm('Delete ' + name + ' from registry?')) return;
+        fetch('/api/systems/' + sysId, {method: 'DELETE'})
+            .then(function(){ loadSystems(); ewcmToast('Deleted', 'success'); })
+            .catch(function(){ ewcmToast('Error deleting system', 'error'); });
+    };
+
+    loadSystems();
+})();
+</script>

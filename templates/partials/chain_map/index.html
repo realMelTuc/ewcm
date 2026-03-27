@@ -1,0 +1,943 @@
+<style>
+/* Chain Map Layout */
+.cm-wrap { display: flex; height: 100vh; overflow: hidden; }
+.cm-sidebar { width: 220px; background: #111620; border-right: 1px solid #1e2530; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.cm-sidebar-header { padding: 12px 14px; border-bottom: 1px solid #1e2530; }
+.cm-sidebar-header h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: #00d4aa; margin: 0 0 8px; }
+.cm-chain-select { width: 100%; background: #1e2530; border: 1px solid #2d3548; border-radius: 4px; padding: 6px 8px; color: #e6e8eb; font-size: 12px; }
+.cm-sidebar-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+.cm-sidebar-label { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 1px; padding: 10px 14px 4px; }
+.cm-node-item { display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer; transition: background 0.1s; font-size: 12px; color: #8892a4; }
+.cm-node-item:hover { background: rgba(255,255,255,0.04); color: #e6e8eb; }
+.cm-node-item.selected { background: rgba(0,212,170,0.08); color: #00d4aa; }
+.cm-node-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cm-node-home { color: #f59e0b; font-size: 10px; margin-left: auto; }
+.cm-conn-item { padding: 4px 14px; font-size: 11px; color: #6b7280; font-family: 'Geist Mono', monospace; display: flex; align-items: center; justify-content: space-between; }
+.cm-conn-item:hover { color: #8892a4; }
+.cm-sidebar-actions { padding: 8px; border-top: 1px solid #1e2530; display: flex; flex-direction: column; gap: 6px; }
+.cm-btn { padding: 7px 12px; border-radius: 4px; border: none; font-size: 11px; cursor: pointer; width: 100%; text-align: left; }
+.cm-btn.teal { background: rgba(0,212,170,0.15); color: #00d4aa; }
+.cm-btn.teal:hover { background: rgba(0,212,170,0.25); }
+.cm-btn.amber { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.cm-btn.amber:hover { background: rgba(245,158,11,0.25); }
+.cm-btn.danger { background: rgba(239,68,68,0.15); color: #ef4444; }
+.cm-btn.danger:hover { background: rgba(239,68,68,0.25); }
+.cm-btn.muted { background: transparent; border: 1px solid #1e2530; color: #6b7280; }
+.cm-btn.muted:hover { color: #8892a4; }
+
+/* Canvas */
+.cm-canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+.cm-canvas-toolbar { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+.cm-canvas-toolbar > * { pointer-events: all; }
+.cm-toolbar-pill { background: rgba(13,17,23,0.92); border: 1px solid #1e2530; border-radius: 4px; padding: 6px 12px; font-size: 11px; color: #8892a4; }
+.cm-toolbar-chain-name { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: #00d4aa; letter-spacing: 1px; }
+.cm-canvas-svg { width: 100%; height: 100%; cursor: grab; }
+.cm-canvas-svg:active { cursor: grabbing; }
+
+/* Detail panel */
+.cm-detail { position: absolute; top: 0; right: 0; bottom: 0; width: 260px; background: #111620; border-left: 1px solid #1e2530; display: none; flex-direction: column; overflow-y: auto; z-index: 20; }
+.cm-detail.visible { display: flex; }
+.cm-detail-header { padding: 14px 14px 10px; border-bottom: 1px solid #1e2530; display: flex; align-items: flex-start; justify-content: space-between; }
+.cm-detail-header h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #fff; margin: 0; }
+.cm-detail-close { background: none; border: none; color: #6b7280; font-size: 18px; cursor: pointer; padding: 0 4px; }
+.cm-detail-close:hover { color: #e6e8eb; }
+.cm-detail-body { padding: 12px 14px; flex: 1; }
+.cm-kv { display: flex; padding: 5px 0; border-bottom: 1px solid #1e2530; font-size: 12px; }
+.cm-kv:last-child { border-bottom: none; }
+.cm-kv-k { color: #6b7280; width: 100px; flex-shrink: 0; font-family: 'Geist Mono', monospace; font-size: 11px; }
+.cm-kv-v { color: #e6e8eb; font-family: 'Geist Mono', monospace; font-size: 11px; word-break: break-all; }
+.cm-detail-section { font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 1px; padding: 10px 0 4px; margin-top: 8px; border-top: 1px solid #1e2530; }
+.cm-detail-actions { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-top: 1px solid #1e2530; }
+
+/* Add form modal */
+.cm-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
+.cm-modal[hidden] { display: none !important; }
+.cm-modal-box { background: #111620; border: 1px solid #1e2530; border-radius: 4px; padding: 20px; width: 400px; max-height: 80vh; overflow-y: auto; }
+.cm-modal-box h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: #00d4aa; margin: 0 0 14px; }
+.cm-field { margin-bottom: 10px; }
+.cm-field label { display: block; font-size: 11px; color: #8892a4; margin-bottom: 4px; }
+.cm-field input, .cm-field select, .cm-field textarea { width: 100%; background: #0d1117; border: 1px solid #1e2530; border-radius: 4px; padding: 7px 10px; color: #e6e8eb; font-size: 12px; }
+.cm-field select option { background: #111620; }
+.cm-field-row { display: flex; gap: 8px; }
+.cm-field-row .cm-field { flex: 1; margin-bottom: 0; }
+.cm-modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+/* SVG node styles */
+.wh-node { cursor: pointer; }
+.wh-node circle { stroke-width: 2; transition: stroke 0.15s; }
+.wh-node:hover circle { stroke-width: 3; }
+.wh-node.home-node circle { stroke-width: 3; }
+.wh-link { stroke-width: 2; stroke-opacity: 0.8; }
+.wh-link.eol { stroke-dasharray: 6,3; }
+.wh-link.critical { stroke-dasharray: none; stroke-width: 3; }
+
+[hidden] { display: none !important; }
+</style>
+
+<div class="cm-wrap" id="cm-wrap">
+    <!-- Sidebar -->
+    <div class="cm-sidebar">
+        <div class="cm-sidebar-header">
+            <h2>Chain Mapper</h2>
+            <select class="cm-chain-select" id="chain-select">
+                <option value="">— Select Chain —</option>
+            </select>
+        </div>
+        <div class="cm-sidebar-body" id="cm-sidebar-body">
+            <div style="padding:20px 14px;color:#6b7280;font-size:12px">Select or create a chain to begin mapping.</div>
+        </div>
+        <div class="cm-sidebar-actions">
+            <button class="cm-btn teal" onclick="showAddNodeModal()">+ Add System</button>
+            <button class="cm-btn teal" onclick="showAddConnModal()">+ Add Connection</button>
+            <button class="cm-btn muted" onclick="showCreateChainModal()">+ New Chain</button>
+            <button class="cm-btn amber" id="btn-archive" onclick="archiveChain()" hidden>Archive Chain</button>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="cm-canvas-wrap" id="cm-canvas-wrap">
+        <div class="cm-canvas-toolbar">
+            <span class="cm-toolbar-chain-name cm-toolbar-pill" id="toolbar-chain-name">No chain selected</span>
+            <span class="cm-toolbar-pill" id="toolbar-stats"></span>
+            <span class="cm-toolbar-pill" id="toolbar-alerts" style="color:#f59e0b"></span>
+        </div>
+        <svg class="cm-canvas-svg" id="cm-svg" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+                </marker>
+            </defs>
+            <g id="cm-graph-root">
+                <g id="cm-links-layer"></g>
+                <g id="cm-nodes-layer"></g>
+            </g>
+            <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#4b5563" font-size="14" id="cm-empty-msg">Select a chain to view its map</text>
+        </svg>
+        <!-- Detail Panel -->
+        <div class="cm-detail" id="cm-detail">
+            <div class="cm-detail-header">
+                <div>
+                    <h3 id="detail-system-name">—</h3>
+                    <div id="detail-class-badge" style="font-size:11px;color:#6b7280"></div>
+                </div>
+                <button class="cm-detail-close" onclick="closeDetail()">✕</button>
+            </div>
+            <div class="cm-detail-body" id="detail-body"></div>
+            <div class="cm-detail-actions">
+                <button class="cm-btn teal" onclick="showAddConnModalForNode()">+ Add Connection</button>
+                <button class="cm-btn amber" onclick="showEditNodeModal()">Edit System</button>
+                <button class="cm-btn danger" onclick="deleteSelectedNode()">Remove Node</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add System Modal -->
+<div class="cm-modal" id="modal-add-node" hidden>
+    <div class="cm-modal-box">
+        <h3>Add System</h3>
+        <div class="cm-field">
+            <label>System Name *</label>
+            <input type="text" id="add-node-name" placeholder="J123456 or Home">
+        </div>
+        <div class="cm-field-row">
+            <div class="cm-field">
+                <label>WH Class</label>
+                <select id="add-node-class">
+                    <option value="">Unknown</option>
+                    <option>C1</option><option>C2</option><option>C3</option>
+                    <option>C4</option><option>C5</option><option>C6</option>
+                    <option>HS</option><option>LS</option><option>NS</option>
+                    <option>Thera</option>
+                </select>
+            </div>
+            <div class="cm-field">
+                <label>Is Home?</label>
+                <select id="add-node-home">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+        </div>
+        <div class="cm-field-row">
+            <div class="cm-field">
+                <label>Static 1</label>
+                <input type="text" id="add-node-static1" placeholder="C247">
+            </div>
+            <div class="cm-field">
+                <label>Static 2</label>
+                <input type="text" id="add-node-static2" placeholder="B274">
+            </div>
+        </div>
+        <div class="cm-field">
+            <label>Effect</label>
+            <select id="add-node-effect">
+                <option value="">None</option>
+                <option>Pulsar</option>
+                <option>Wolf-Rayet</option>
+                <option>Cataclysmic Variable</option>
+                <option>Magnetar</option>
+                <option>Black Hole</option>
+                <option>Red Giant</option>
+            </select>
+        </div>
+        <div class="cm-field">
+            <label>Notes</label>
+            <input type="text" id="add-node-notes" placeholder="Optional notes">
+        </div>
+        <div class="cm-modal-actions">
+            <button class="cm-btn muted" onclick="closeModal('modal-add-node')">Cancel</button>
+            <button class="cm-btn teal" onclick="submitAddNode()">Add System</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Connection Modal -->
+<div class="cm-modal" id="modal-add-conn" hidden>
+    <div class="cm-modal-box">
+        <h3>Add Connection</h3>
+        <div class="cm-field-row">
+            <div class="cm-field">
+                <label>From System *</label>
+                <select id="add-conn-from"></select>
+            </div>
+            <div class="cm-field">
+                <label>To System *</label>
+                <select id="add-conn-to"></select>
+            </div>
+        </div>
+        <div class="cm-field-row">
+            <div class="cm-field">
+                <label>WH Type</label>
+                <input type="text" id="add-conn-type" placeholder="K162" value="K162">
+            </div>
+            <div class="cm-field">
+                <label>Size</label>
+                <select id="add-conn-size">
+                    <option value="large">Large (BS)</option>
+                    <option value="capital">Capital</option>
+                    <option value="cruiser">Cruiser (M)</option>
+                    <option value="frigate">Frigate (S)</option>
+                </select>
+            </div>
+        </div>
+        <div class="cm-field-row">
+            <div class="cm-field">
+                <label>Mass Status</label>
+                <select id="add-conn-mass">
+                    <option value="fresh">Fresh</option>
+                    <option value="reduced">Reduced (50%)</option>
+                    <option value="critical">Critical (&lt;10%)</option>
+                </select>
+            </div>
+            <div class="cm-field">
+                <label>Time Status</label>
+                <select id="add-conn-time">
+                    <option value="fresh">Fresh</option>
+                    <option value="eol">EOL (&lt;4h)</option>
+                </select>
+            </div>
+        </div>
+        <div class="cm-field-row">
+            <div class="cm-field">
+                <label>Sig ID (from)</label>
+                <input type="text" id="add-conn-sig-from" placeholder="ABC-123">
+            </div>
+            <div class="cm-field">
+                <label>Sig ID (to)</label>
+                <input type="text" id="add-conn-sig-to" placeholder="XYZ-456">
+            </div>
+        </div>
+        <div class="cm-modal-actions">
+            <button class="cm-btn muted" onclick="closeModal('modal-add-conn')">Cancel</button>
+            <button class="cm-btn teal" onclick="submitAddConn()">Add Connection</button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Chain Modal -->
+<div class="cm-modal" id="modal-create-chain" hidden>
+    <div class="cm-modal-box">
+        <h3>New Chain</h3>
+        <div class="cm-field">
+            <label>Chain Name *</label>
+            <input type="text" id="create-chain-name" placeholder="Chain 2026-03-27 Morning">
+        </div>
+        <div class="cm-field">
+            <label>Home System</label>
+            <input type="text" id="create-chain-home" placeholder="J123456 or Jita">
+        </div>
+        <div class="cm-field">
+            <label>Notes</label>
+            <input type="text" id="create-chain-notes" placeholder="Optional notes">
+        </div>
+        <div class="cm-modal-actions">
+            <button class="cm-btn muted" onclick="closeModal('modal-create-chain')">Cancel</button>
+            <button class="cm-btn teal" onclick="submitCreateChain()">Create Chain</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ─── State ───
+    var currentChainId = null;
+    var graphNodes = [];    // {id, system_name, wh_class, is_home, pos_x, pos_y, vx, vy, static1, static2, effect, notes}
+    var graphLinks = [];    // {id, from_node_id, to_node_id, wh_type, wh_size, mass_status, time_status, sig_id_from, sig_id_to}
+    var selectedNodeId = null;
+    var simRunning = false;
+    var simAlpha = 1.0;
+    var isDragging = false;
+    var dragNode = null;
+    var svgOffset = {x: 0, y: 0};
+    var panStart = null;
+    var panOffset = {x: 0, y: 0};
+    var currentPan = {x: 0, y: 0};
+
+    // ─── WH Class colors ───
+    var WH_COLORS = {
+        'C1':'#8b5cf6','C2':'#7c3aed','C3':'#6d28d9','C4':'#5b21b6','C5':'#4c1d95','C6':'#2e1065',
+        'HS':'#22c55e','LS':'#f59e0b','NS':'#ef4444','Thera':'#00d4aa',
+        '?': '#6b7280'
+    };
+
+    function whColor(c) { return WH_COLORS[c] || '#6b7280'; }
+    function linkColor(link) {
+        if (link.mass_status === 'critical') return '#ef4444';
+        if (link.time_status === 'eol') return '#f59e0b';
+        return '#00d4aa';
+    }
+
+    // ─── Load chain list ───
+    function loadChainList() {
+        fetch('/api/chain-map/chains')
+            .then(function(r){ return r.json(); })
+            .then(function(chains) {
+                var sel = document.getElementById('chain-select');
+                var cur = sel.value;
+                sel.innerHTML = '<option value="">— Select Chain —</option>';
+                chains.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name + (c.home_system ? ' [' + c.home_system + ']' : '');
+                    if (c.id === cur) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+                // Check URL param
+                var params = new URLSearchParams(window.location.search);
+                var chainParam = params.get('chain');
+                if (chainParam && !currentChainId) {
+                    sel.value = chainParam;
+                    loadChain(chainParam);
+                }
+            }).catch(function(){});
+    }
+
+    // ─── Load chain ───
+    window.loadChain = function(chainId) {
+        if (!chainId) return;
+        currentChainId = chainId;
+        fetch('/api/chain-map/chain/' + chainId)
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                graphNodes = data.nodes.map(function(n) {
+                    return Object.assign({vx: 0, vy: 0}, n);
+                });
+                graphLinks = data.connections;
+                document.getElementById('btn-archive').hidden = false;
+                document.getElementById('toolbar-chain-name').textContent = data.chain.name;
+                updateToolbarStats();
+                renderSidebar();
+                initPositions();
+                startSimulation();
+                closeDetail();
+            }).catch(function(e){ console.error(e); });
+    };
+
+    function initPositions() {
+        var svg = document.getElementById('cm-svg');
+        var W = svg.clientWidth || 800;
+        var H = svg.clientHeight || 600;
+        var cx = W / 2, cy = H / 2;
+        var hasPositions = graphNodes.some(function(n){ return n.pos_x && n.pos_y; });
+        if (!hasPositions) {
+            // Arrange in circle
+            graphNodes.forEach(function(n, i) {
+                var angle = (2 * Math.PI * i) / Math.max(graphNodes.length, 1);
+                var r = Math.min(W, H) * 0.3;
+                n.pos_x = cx + r * Math.cos(angle);
+                n.pos_y = cy + r * Math.sin(angle);
+            });
+        }
+        // Always use pos_x/pos_y as initial position
+        graphNodes.forEach(function(n) {
+            if (!n.pos_x || !n.pos_y) {
+                n.pos_x = cx + (Math.random() - 0.5) * 400;
+                n.pos_y = cy + (Math.random() - 0.5) * 400;
+            }
+            n.vx = 0; n.vy = 0;
+        });
+    }
+
+    // ─── Force simulation ───
+    function simulationTick() {
+        if (!simRunning || simAlpha < 0.001) { simRunning = false; return; }
+        var W = document.getElementById('cm-svg').clientWidth || 800;
+        var H = document.getElementById('cm-svg').clientHeight || 600;
+        var cx = W / 2, cy = H / 2;
+
+        // Repulsion
+        for (var i = 0; i < graphNodes.length; i++) {
+            for (var j = i + 1; j < graphNodes.length; j++) {
+                var a = graphNodes[i], b = graphNodes[j];
+                var dx = b.pos_x - a.pos_x;
+                var dy = b.pos_y - a.pos_y;
+                var d2 = dx*dx + dy*dy + 1;
+                var d = Math.sqrt(d2);
+                var f = 6000 * simAlpha / d2;
+                if (!a._pinned) { a.vx -= dx/d * f; a.vy -= dy/d * f; }
+                if (!b._pinned) { b.vx += dx/d * f; b.vy += dy/d * f; }
+            }
+        }
+
+        // Spring forces
+        graphLinks.forEach(function(l) {
+            var s = graphNodes.find(function(n){ return n.id === l.from_node_id; });
+            var t = graphNodes.find(function(n){ return n.id === l.to_node_id; });
+            if (!s || !t) return;
+            var dx = t.pos_x - s.pos_x;
+            var dy = t.pos_y - s.pos_y;
+            var d = Math.sqrt(dx*dx + dy*dy) || 1;
+            var rest = 200;
+            var k = 0.05 * simAlpha;
+            var fx = (d - rest) * dx/d * k;
+            var fy = (d - rest) * dy/d * k;
+            if (!s._pinned) { s.vx += fx; s.vy += fy; }
+            if (!t._pinned) { t.vx -= fx; t.vy -= fy; }
+        });
+
+        // Center gravity
+        graphNodes.forEach(function(n) {
+            if (!n._pinned) {
+                n.vx += (cx - n.pos_x) * 0.003 * simAlpha;
+                n.vy += (cy - n.pos_y) * 0.003 * simAlpha;
+            }
+        });
+
+        // Apply + damp
+        graphNodes.forEach(function(n) {
+            if (!n._pinned) {
+                n.vx *= 0.8;
+                n.vy *= 0.8;
+                n.pos_x += n.vx;
+                n.pos_y += n.vy;
+            }
+        });
+
+        simAlpha *= 0.97;
+        renderGraph();
+        requestAnimationFrame(simulationTick);
+    }
+
+    function startSimulation() {
+        simAlpha = 1.0;
+        if (!simRunning) {
+            simRunning = true;
+            requestAnimationFrame(simulationTick);
+        }
+    }
+
+    // ─── Render ───
+    function renderGraph() {
+        var linksLayer = document.getElementById('cm-links-layer');
+        var nodesLayer = document.getElementById('cm-nodes-layer');
+        var emptyMsg = document.getElementById('cm-empty-msg');
+
+        if (!graphNodes.length) {
+            linksLayer.innerHTML = '';
+            nodesLayer.innerHTML = '';
+            emptyMsg.style.display = '';
+            return;
+        }
+        emptyMsg.style.display = 'none';
+
+        // Render links
+        linksLayer.innerHTML = graphLinks.map(function(l) {
+            var s = graphNodes.find(function(n){ return n.id === l.from_node_id; });
+            var t = graphNodes.find(function(n){ return n.id === l.to_node_id; });
+            if (!s || !t) return '';
+            var color = linkColor(l);
+            var dash = l.time_status === 'eol' ? '8,4' : (l.mass_status === 'critical' ? '3,3' : 'none');
+            var w = l.mass_status === 'critical' ? 3 : 2;
+            var mid_x = (s.pos_x + t.pos_x) / 2;
+            var mid_y = (s.pos_y + t.pos_y) / 2;
+            var label = (l.wh_type || 'K162') + (l.sig_id_from ? ' (' + l.sig_id_from + ')' : '');
+            return '<g class="link-group" data-id="' + l.id + '">'
+                + '<line x1="' + s.pos_x + '" y1="' + s.pos_y + '" x2="' + t.pos_x + '" y2="' + t.pos_y + '"'
+                + ' stroke="' + color + '" stroke-width="' + w + '" stroke-opacity="0.8"'
+                + ' stroke-dasharray="' + dash + '" />'
+                + '<text x="' + mid_x + '" y="' + (mid_y - 6) + '" text-anchor="middle" font-size="9" fill="' + color + '" font-family="\'Geist Mono\',monospace" opacity="0.8">' + escSvg(label) + '</text>'
+                + '</g>';
+        }).join('');
+
+        // Render nodes
+        nodesLayer.innerHTML = graphNodes.map(function(n) {
+            var color = whColor(n.wh_class);
+            var isSelected = n.id === selectedNodeId;
+            var strokeColor = isSelected ? '#ffffff' : (n.is_home ? '#f59e0b' : color);
+            var strokeW = isSelected ? 3 : (n.is_home ? 3 : 2);
+            var r = n.is_home ? 34 : 28;
+            var label = n.system_name || '?';
+            var classLabel = n.wh_class || '?';
+            return '<g class="wh-node" data-id="' + n.id + '" transform="translate(' + n.pos_x + ',' + n.pos_y + ')" style="cursor:pointer">'
+                + '<circle r="' + r + '" fill="' + color + '20" stroke="' + strokeColor + '" stroke-width="' + strokeW + '"/>'
+                + (n.is_home ? '<circle r="' + (r + 5) + '" fill="none" stroke="#f59e0b" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="4,3"/>' : '')
+                + '<text y="-4" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="#ffffff" font-weight="600" font-family="\'Barlow Condensed\',sans-serif">' + escSvg(label) + '</text>'
+                + '<text y="8" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="' + color + '" font-family="\'Geist Mono\',monospace">' + escSvg(classLabel) + '</text>'
+                + (n.static1 ? '<text y="18" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="' + color + '80" font-family="\'Geist Mono\',monospace">' + escSvg(n.static1) + (n.static2 ? '/' + n.static2 : '') + '</text>' : '')
+                + '</g>';
+        }).join('');
+
+        // Bind node events
+        nodesLayer.querySelectorAll('.wh-node').forEach(function(el) {
+            el.addEventListener('mousedown', onNodeMouseDown);
+        });
+    }
+
+    function escSvg(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ─── Sidebar ───
+    function renderSidebar() {
+        var body = document.getElementById('cm-sidebar-body');
+        if (!graphNodes.length) {
+            body.innerHTML = '<div style="padding:16px 14px;color:#6b7280;font-size:12px">No systems yet. Add a system to start mapping.</div>';
+            return;
+        }
+        var alertConns = graphLinks.filter(function(l){ return l.mass_status === 'critical' || l.time_status === 'eol'; });
+        var html = '<div class="cm-sidebar-label">Systems (' + graphNodes.length + ')</div>';
+        html += graphNodes.map(function(n) {
+            var color = whColor(n.wh_class);
+            var cls = n.id === selectedNodeId ? ' selected' : '';
+            return '<div class="cm-node-item' + cls + '" onclick="selectNode(\'' + n.id + '\')">'
+                + '<div class="cm-node-dot" style="background:' + color + '"></div>'
+                + '<span>' + (n.system_name || '?') + '</span>'
+                + (n.is_home ? '<span class="cm-node-home">⌂</span>' : '')
+                + '</div>';
+        }).join('');
+        html += '<div class="cm-sidebar-label" style="margin-top:4px">Connections (' + graphLinks.length + ')</div>';
+        if (!graphLinks.length) {
+            html += '<div style="padding:4px 14px;color:#6b7280;font-size:11px">None yet</div>';
+        } else {
+            html += graphLinks.map(function(l) {
+                var from = (graphNodes.find(function(n){ return n.id === l.from_node_id; }) || {}).system_name || '?';
+                var to = (graphNodes.find(function(n){ return n.id === l.to_node_id; }) || {}).system_name || '?';
+                var color = linkColor(l);
+                return '<div class="cm-conn-item" style="color:' + color + '">'
+                    + '<span>' + from + '→' + to + '</span>'
+                    + '<span style="font-size:10px">' + (l.wh_type || 'K162') + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+        if (alertConns.length) {
+            html += '<div class="cm-sidebar-label" style="color:#f59e0b;margin-top:4px">⚠ Alerts (' + alertConns.length + ')</div>';
+        }
+        body.innerHTML = html;
+    }
+
+    function updateToolbarStats() {
+        var stats = document.getElementById('toolbar-stats');
+        var alerts = document.getElementById('toolbar-alerts');
+        stats.textContent = graphNodes.length + ' systems · ' + graphLinks.length + ' connections';
+        var critCount = graphLinks.filter(function(l){ return l.mass_status === 'critical'; }).length;
+        var eolCount = graphLinks.filter(function(l){ return l.time_status === 'eol'; }).length;
+        if (critCount || eolCount) {
+            alerts.textContent = (critCount ? critCount + ' critical ' : '') + (eolCount ? eolCount + ' EOL' : '');
+        } else {
+            alerts.textContent = '';
+        }
+    }
+
+    // ─── Node selection ───
+    window.selectNode = function(nodeId) {
+        selectedNodeId = nodeId;
+        var n = graphNodes.find(function(x){ return x.id === nodeId; });
+        if (!n) return;
+        renderGraph();
+        renderSidebar();
+        showDetailPanel(n);
+    };
+
+    function showDetailPanel(n) {
+        var panel = document.getElementById('cm-detail');
+        panel.classList.add('visible');
+        document.getElementById('detail-system-name').textContent = n.system_name;
+        var color = whColor(n.wh_class);
+        var badge = n.wh_class
+            ? '<span style="background:' + color + '20;color:' + color + ';border-radius:4px;padding:2px 6px;font-size:10px;font-family:\'Geist Mono\',monospace">' + n.wh_class + '</span>'
+            : '';
+        document.getElementById('detail-class-badge').innerHTML = badge + (n.is_home ? ' <span style="color:#f59e0b;font-size:10px">⌂ Home</span>' : '');
+
+        var conns = graphLinks.filter(function(l){ return l.from_node_id === n.id || l.to_node_id === n.id; });
+        var html = '';
+        if (n.static1) html += '<div class="cm-kv"><div class="cm-kv-k">Static 1</div><div class="cm-kv-v" style="color:#a78bfa">' + n.static1 + '</div></div>';
+        if (n.static2) html += '<div class="cm-kv"><div class="cm-kv-k">Static 2</div><div class="cm-kv-v" style="color:#a78bfa">' + n.static2 + '</div></div>';
+        if (n.effect)  html += '<div class="cm-kv"><div class="cm-kv-k">Effect</div><div class="cm-kv-v" style="color:#f59e0b">' + n.effect + '</div></div>';
+        if (n.notes)   html += '<div class="cm-kv"><div class="cm-kv-k">Notes</div><div class="cm-kv-v" style="color:#8892a4">' + n.notes + '</div></div>';
+        if (conns.length) {
+            html += '<div class="cm-detail-section">Connections (' + conns.length + ')</div>';
+            conns.forEach(function(l) {
+                var other = l.from_node_id === n.id ? l.to_node_id : l.from_node_id;
+                var otherN = graphNodes.find(function(x){ return x.id === other; });
+                var otherName = otherN ? otherN.system_name : '?';
+                var lc = linkColor(l);
+                html += '<div class="cm-kv" style="cursor:pointer" onclick="showEditConnModal(\'' + l.id + '\')">'
+                    + '<div class="cm-kv-k" style="color:' + lc + '">' + (l.wh_type || 'K162') + '</div>'
+                    + '<div class="cm-kv-v">' + otherName
+                    + ' <span style="color:' + lc + ';font-size:10px">· ' + l.mass_status + ' / ' + l.time_status + '</span></div>'
+                    + '</div>';
+            });
+        }
+        document.getElementById('detail-body').innerHTML = html;
+    }
+
+    window.closeDetail = function() {
+        selectedNodeId = null;
+        document.getElementById('cm-detail').classList.remove('visible');
+        renderGraph();
+        renderSidebar();
+    };
+
+    // ─── SVG drag / pan ───
+    var svg = document.getElementById('cm-svg');
+    var graphRoot = document.getElementById('cm-graph-root');
+
+    svg.addEventListener('mousedown', function(e) {
+        if (e.target.closest && e.target.closest('.wh-node')) return;
+        panStart = {x: e.clientX - currentPan.x, y: e.clientY - currentPan.y};
+    });
+    window.addEventListener('mousemove', function(e) {
+        if (panStart) {
+            currentPan.x = e.clientX - panStart.x;
+            currentPan.y = e.clientY - panStart.y;
+            graphRoot.setAttribute('transform', 'translate(' + currentPan.x + ',' + currentPan.y + ')');
+        }
+        if (dragNode) {
+            var rect = svg.getBoundingClientRect();
+            dragNode.pos_x = e.clientX - rect.left - currentPan.x;
+            dragNode.pos_y = e.clientY - rect.top - currentPan.y;
+            renderGraph();
+        }
+    });
+    window.addEventListener('mouseup', function(e) {
+        panStart = null;
+        if (dragNode) {
+            // Save position
+            var n = dragNode;
+            dragNode = null;
+            fetch('/api/chain-map/nodes/' + n.id, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pos_x: n.pos_x, pos_y: n.pos_y})
+            }).catch(function(){});
+        }
+    });
+
+    function onNodeMouseDown(e) {
+        e.stopPropagation();
+        var nodeId = this.dataset.id;
+        var n = graphNodes.find(function(x){ return x.id === nodeId; });
+        if (e.button === 0) {
+            if (isDragging) return;
+            // Detect click vs drag with a small delay
+            var startX = e.clientX, startY = e.clientY;
+            var wasDrag = false;
+            function onMove(ev) {
+                if (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4) {
+                    wasDrag = true;
+                    dragNode = n;
+                    n._pinned = true;
+                }
+            }
+            function onUp() {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+                if (!wasDrag) {
+                    selectNode(nodeId);
+                } else {
+                    n._pinned = false;
+                }
+            }
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+        }
+    }
+
+    // ─── Modals ───
+    function closeModal(id) { document.getElementById(id).hidden = true; }
+    window.closeModal = closeModal;
+
+    window.showCreateChainModal = function() {
+        var d = new Date().toISOString().slice(0, 10);
+        document.getElementById('create-chain-name').value = 'Chain ' + d;
+        document.getElementById('create-chain-home').value = '';
+        document.getElementById('create-chain-notes').value = '';
+        document.getElementById('modal-create-chain').hidden = false;
+    };
+
+    window.submitCreateChain = function() {
+        var name = document.getElementById('create-chain-name').value.trim();
+        var home = document.getElementById('create-chain-home').value.trim();
+        var notes = document.getElementById('create-chain-notes').value.trim();
+        if (!name) { ewcmToast('Chain name required', 'error'); return; }
+        fetch('/api/chains', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name, home_system: home, notes: notes})
+        }).then(function(r){ return r.json(); })
+          .then(function(chain) {
+            closeModal('modal-create-chain');
+            loadChainList();
+            setTimeout(function() {
+                document.getElementById('chain-select').value = chain.id;
+                loadChain(chain.id);
+            }, 200);
+            ewcmToast('Chain created', 'success');
+        }).catch(function(){ ewcmToast('Error creating chain', 'error'); });
+    };
+
+    window.showAddNodeModal = function() {
+        if (!currentChainId) { ewcmToast('Select a chain first', 'warn'); return; }
+        document.getElementById('add-node-name').value = '';
+        document.getElementById('add-node-class').value = '';
+        document.getElementById('add-node-home').value = '0';
+        document.getElementById('add-node-static1').value = '';
+        document.getElementById('add-node-static2').value = '';
+        document.getElementById('add-node-effect').value = '';
+        document.getElementById('add-node-notes').value = '';
+        document.getElementById('modal-add-node').hidden = false;
+        document.getElementById('add-node-name').focus();
+    };
+
+    window.submitAddNode = function() {
+        var name = document.getElementById('add-node-name').value.trim();
+        if (!name) { ewcmToast('System name required', 'error'); return; }
+        var svg = document.getElementById('cm-svg');
+        var cx = (svg.clientWidth || 800) / 2 + (Math.random() - 0.5) * 200;
+        var cy = (svg.clientHeight || 600) / 2 + (Math.random() - 0.5) * 200;
+        fetch('/api/chain-map/chain/' + currentChainId + '/nodes', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                system_name: name,
+                wh_class: document.getElementById('add-node-class').value || null,
+                is_home: document.getElementById('add-node-home').value === '1',
+                static1: document.getElementById('add-node-static1').value.trim() || null,
+                static2: document.getElementById('add-node-static2').value.trim() || null,
+                effect: document.getElementById('add-node-effect').value || null,
+                notes: document.getElementById('add-node-notes').value.trim() || null,
+                pos_x: cx, pos_y: cy
+            })
+        }).then(function(r){ return r.json(); })
+          .then(function(node) {
+            closeModal('modal-add-node');
+            node.vx = 0; node.vy = 0;
+            graphNodes.push(node);
+            updateToolbarStats();
+            renderSidebar();
+            startSimulation();
+            ewcmToast('System added', 'success');
+        }).catch(function(){ ewcmToast('Error adding system', 'error'); });
+    };
+
+    window.showAddConnModal = function() {
+        if (!currentChainId) { ewcmToast('Select a chain first', 'warn'); return; }
+        populateNodeSelects();
+        document.getElementById('add-conn-type').value = 'K162';
+        document.getElementById('add-conn-size').value = 'large';
+        document.getElementById('add-conn-mass').value = 'fresh';
+        document.getElementById('add-conn-time').value = 'fresh';
+        document.getElementById('add-conn-sig-from').value = '';
+        document.getElementById('add-conn-sig-to').value = '';
+        document.getElementById('modal-add-conn').hidden = false;
+    };
+
+    window.showAddConnModalForNode = function() {
+        if (!selectedNodeId) return;
+        populateNodeSelects();
+        document.getElementById('add-conn-from').value = selectedNodeId;
+        document.getElementById('add-conn-type').value = 'K162';
+        document.getElementById('add-conn-size').value = 'large';
+        document.getElementById('add-conn-mass').value = 'fresh';
+        document.getElementById('add-conn-time').value = 'fresh';
+        document.getElementById('add-conn-sig-from').value = '';
+        document.getElementById('add-conn-sig-to').value = '';
+        document.getElementById('modal-add-conn').hidden = false;
+    };
+
+    function populateNodeSelects() {
+        ['add-conn-from', 'add-conn-to'].forEach(function(id) {
+            var sel = document.getElementById(id);
+            sel.innerHTML = '<option value="">— Select —</option>';
+            graphNodes.forEach(function(n) {
+                var opt = document.createElement('option');
+                opt.value = n.id;
+                opt.textContent = n.system_name + (n.is_home ? ' (Home)' : '');
+                sel.appendChild(opt);
+            });
+        });
+    }
+
+    window.submitAddConn = function() {
+        var from = document.getElementById('add-conn-from').value;
+        var to = document.getElementById('add-conn-to').value;
+        if (!from || !to) { ewcmToast('Select both systems', 'error'); return; }
+        if (from === to) { ewcmToast('Cannot connect system to itself', 'error'); return; }
+        fetch('/api/chain-map/chain/' + currentChainId + '/connections', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                from_node_id: from,
+                to_node_id: to,
+                wh_type: document.getElementById('add-conn-type').value.trim() || 'K162',
+                wh_size: document.getElementById('add-conn-size').value,
+                mass_status: document.getElementById('add-conn-mass').value,
+                time_status: document.getElementById('add-conn-time').value,
+                sig_id_from: document.getElementById('add-conn-sig-from').value.trim() || null,
+                sig_id_to: document.getElementById('add-conn-sig-to').value.trim() || null,
+            })
+        }).then(function(r){ return r.json(); })
+          .then(function(conn) {
+            closeModal('modal-add-conn');
+            graphLinks.push(conn);
+            updateToolbarStats();
+            renderSidebar();
+            renderGraph();
+            ewcmToast('Connection added', 'success');
+        }).catch(function(){ ewcmToast('Error adding connection', 'error'); });
+    };
+
+    window.showEditNodeModal = function() {
+        var n = graphNodes.find(function(x){ return x.id === selectedNodeId; });
+        if (!n) return;
+        document.getElementById('add-node-name').value = n.system_name;
+        document.getElementById('add-node-class').value = n.wh_class || '';
+        document.getElementById('add-node-home').value = n.is_home ? '1' : '0';
+        document.getElementById('add-node-static1').value = n.static1 || '';
+        document.getElementById('add-node-static2').value = n.static2 || '';
+        document.getElementById('add-node-effect').value = n.effect || '';
+        document.getElementById('add-node-notes').value = n.notes || '';
+        // Repurpose add-node modal for edit
+        document.querySelector('#modal-add-node h3').textContent = 'Edit System';
+        document.querySelector('#modal-add-node .cm-modal-actions button.teal').textContent = 'Save';
+        document.querySelector('#modal-add-node .cm-modal-actions button.teal').onclick = submitEditNode;
+        document.getElementById('modal-add-node').hidden = false;
+    };
+
+    window.submitEditNode = function() {
+        var n = graphNodes.find(function(x){ return x.id === selectedNodeId; });
+        if (!n) return;
+        var payload = {
+            system_name: document.getElementById('add-node-name').value.trim(),
+            wh_class: document.getElementById('add-node-class').value || null,
+            is_home: document.getElementById('add-node-home').value === '1',
+            static1: document.getElementById('add-node-static1').value.trim() || null,
+            static2: document.getElementById('add-node-static2').value.trim() || null,
+            effect: document.getElementById('add-node-effect').value || null,
+            notes: document.getElementById('add-node-notes').value.trim() || null,
+        };
+        fetch('/api/chain-map/nodes/' + selectedNodeId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        }).then(function(r){ return r.json(); })
+          .then(function(updated) {
+            Object.assign(n, updated);
+            closeModal('modal-add-node');
+            // Restore modal to add mode
+            document.querySelector('#modal-add-node h3').textContent = 'Add System';
+            document.querySelector('#modal-add-node .cm-modal-actions button.teal').textContent = 'Add System';
+            document.querySelector('#modal-add-node .cm-modal-actions button.teal').onclick = submitAddNode;
+            renderSidebar();
+            renderGraph();
+            if (selectedNodeId) showDetailPanel(n);
+            ewcmToast('System updated', 'success');
+        }).catch(function(){ ewcmToast('Error updating system', 'error'); });
+    };
+
+    window.deleteSelectedNode = function() {
+        if (!selectedNodeId) return;
+        var n = graphNodes.find(function(x){ return x.id === selectedNodeId; });
+        if (!n) return;
+        if (!confirm('Remove ' + n.system_name + ' from this chain?')) return;
+        fetch('/api/chain-map/nodes/' + selectedNodeId, {method: 'DELETE'})
+            .then(function() {
+                graphNodes = graphNodes.filter(function(x){ return x.id !== selectedNodeId; });
+                graphLinks = graphLinks.filter(function(l){ return l.from_node_id !== selectedNodeId && l.to_node_id !== selectedNodeId; });
+                closeDetail();
+                updateToolbarStats();
+                renderSidebar();
+                ewcmToast('System removed', 'success');
+            }).catch(function(){ ewcmToast('Error removing system', 'error'); });
+    };
+
+    window.showEditConnModal = function(connId) {
+        var l = graphLinks.find(function(x){ return x.id === connId; });
+        if (!l) return;
+        // Quick inline status update using a simple prompt approach
+        var newMass = prompt('Mass status (fresh/reduced/critical):', l.mass_status);
+        if (newMass === null) return;
+        var newTime = prompt('Time status (fresh/eol):', l.time_status);
+        if (newTime === null) return;
+        fetch('/api/chain-map/connections/' + connId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mass_status: newMass, time_status: newTime})
+        }).then(function(r){ return r.json(); })
+          .then(function(updated) {
+            Object.assign(l, updated);
+            renderGraph();
+            renderSidebar();
+            if (selectedNodeId) {
+                var n = graphNodes.find(function(x){ return x.id === selectedNodeId; });
+                if (n) showDetailPanel(n);
+            }
+            updateToolbarStats();
+            ewcmToast('Connection updated', 'success');
+        }).catch(function(){});
+    };
+
+    window.archiveChain = function() {
+        if (!currentChainId) return;
+        if (!confirm('Archive this chain? It will be saved to history and marked archived.')) return;
+        fetch('/api/chains/' + currentChainId + '/archive', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
+        }).then(function(r){ return r.json(); })
+          .then(function() {
+            ewcmToast('Chain archived', 'success');
+            currentChainId = null;
+            graphNodes = [];
+            graphLinks = [];
+            renderGraph();
+            renderSidebar();
+            document.getElementById('btn-archive').hidden = true;
+            document.getElementById('toolbar-chain-name').textContent = 'No chain selected';
+            document.getElementById('toolbar-stats').textContent = '';
+            document.getElementById('cm-sidebar-body').innerHTML = '<div style="padding:16px 14px;color:#6b7280;font-size:12px">Chain archived. Select or create a new chain.</div>';
+            loadChainList();
+        }).catch(function(){ ewcmToast('Error archiving chain', 'error'); });
+    };
+
+    // ─── Chain selector ───
+    document.getElementById('chain-select').addEventListener('change', function() {
+        var chainId = this.value;
+        if (chainId) loadChain(chainId);
+    });
+
+    // ─── Init ───
+    loadChainList();
+})();
+</script>

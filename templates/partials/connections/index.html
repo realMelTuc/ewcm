@@ -1,0 +1,219 @@
+<div class="header-bar">
+    <div class="header-left">
+        <div class="icon-square" style="background:#00d4aa;color:#0d1117;width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px;">⟺</div>
+        <h1 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;margin:0">Connections</h1>
+    </div>
+    <div style="color:#8892a4;font-size:12px;margin-bottom:12px">Wormhole connections across all chains · Mass status, EOL, and sig tracking</div>
+</div>
+
+<!-- Filters -->
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <select id="filter-chain" class="dark-select" onchange="loadConnections()" style="min-width:200px">
+        <option value="">All Chains</option>
+    </select>
+    <select id="filter-mass" class="dark-select" onchange="loadConnections()">
+        <option value="">All Mass</option>
+        <option value="fresh">Fresh</option>
+        <option value="reduced">Reduced</option>
+        <option value="critical">Critical</option>
+    </select>
+    <select id="filter-time" class="dark-select" onchange="loadConnections()">
+        <option value="">All Time</option>
+        <option value="fresh">Fresh</option>
+        <option value="eol">EOL</option>
+    </select>
+    <span id="conn-count" style="font-size:12px;color:#6b7280;margin-left:8px"></span>
+</div>
+
+<!-- Connections Table -->
+<table class="data-grid" id="conn-table">
+    <thead><tr>
+        <th>Chain</th>
+        <th>From System</th>
+        <th>To System</th>
+        <th>Type</th>
+        <th>Size</th>
+        <th>Mass</th>
+        <th>Time</th>
+        <th>Sig From</th>
+        <th>Sig To</th>
+        <th>Updated</th>
+        <th>Actions</th>
+    </tr></thead>
+    <tbody id="conn-body">
+        <tr><td colspan="11" style="text-align:center;color:#6b7280;padding:30px">Loading...</td></tr>
+    </tbody>
+</table>
+
+<!-- Edit Modal -->
+<div id="conn-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#111620;border:1px solid #1e2530;border-radius:4px;padding:20px;width:400px">
+        <h3 style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:#00d4aa;margin:0 0 14px">Update Connection</h3>
+        <input type="hidden" id="edit-conn-id">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">WH Type</label>
+                <input type="text" id="edit-conn-type" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Size</label>
+                <select id="edit-conn-size" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+                    <option value="large">Large (BS)</option>
+                    <option value="capital">Capital</option>
+                    <option value="cruiser">Cruiser (M)</option>
+                    <option value="frigate">Frigate (S)</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Mass Status</label>
+                <select id="edit-conn-mass" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+                    <option value="fresh">Fresh</option>
+                    <option value="reduced">Reduced (50%)</option>
+                    <option value="critical">Critical (&lt;10%)</option>
+                </select>
+            </div>
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Time Status</label>
+                <select id="edit-conn-time" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+                    <option value="fresh">Fresh</option>
+                    <option value="eol">EOL (&lt;4h)</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Sig ID From</label>
+                <input type="text" id="edit-conn-sig-from" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+            <div style="flex:1">
+                <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Sig ID To</label>
+                <input type="text" id="edit-conn-sig-to" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+            </div>
+        </div>
+        <div style="margin-bottom:10px">
+            <label style="display:block;font-size:11px;color:#8892a4;margin-bottom:4px">Notes</label>
+            <input type="text" id="edit-conn-notes" style="width:100%;background:#0d1117;border:1px solid #1e2530;border-radius:4px;padding:7px 10px;color:#e6e8eb;font-size:12px">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn muted" onclick="closeConnEditModal()">Cancel</button>
+            <button class="btn teal" onclick="submitConnEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function massPill(m) {
+        var c = m === 'critical' ? '#ef4444' : m === 'reduced' ? '#f59e0b' : '#22c55e';
+        return '<span style="background:' + c + '20;color:' + c + ';border-radius:10px;padding:2px 8px;font-size:10px">' + (m || '—') + '</span>';
+    }
+    function timePill(t) {
+        var c = t === 'eol' ? '#f59e0b' : '#22c55e';
+        var label = t === 'eol' ? 'EOL' : 'Fresh';
+        return '<span style="background:' + c + '20;color:' + c + ';border-radius:10px;padding:2px 8px;font-size:10px">' + label + '</span>';
+    }
+    function sizeBadge(s) {
+        var labels = {large:'Large',capital:'Capital',cruiser:'Cruiser',frigate:'Frigate'};
+        return '<span style="font-size:11px;color:#6b7280">' + (labels[s] || s || '—') + '</span>';
+    }
+
+    // Load chain options
+    fetch('/api/chains')
+        .then(function(r){ return r.json(); })
+        .then(function(chains) {
+            var sel = document.getElementById('filter-chain');
+            chains.forEach(function(c) {
+                var opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name + ' (' + c.status + ')';
+                sel.appendChild(opt);
+            });
+        }).catch(function(){});
+
+    window.loadConnections = function() {
+        var chain = document.getElementById('filter-chain').value;
+        var mass = document.getElementById('filter-mass').value;
+        var time = document.getElementById('filter-time').value;
+        var params = [];
+        if (chain) params.push('chain_id=' + encodeURIComponent(chain));
+        if (mass) params.push('mass_status=' + encodeURIComponent(mass));
+        if (time) params.push('time_status=' + encodeURIComponent(time));
+        var url = '/api/connections' + (params.length ? '?' + params.join('&') : '');
+        fetch(url)
+            .then(function(r){ return r.json(); })
+            .then(function(rows) {
+                document.getElementById('conn-count').textContent = rows.length + ' connections';
+                var tbody = document.getElementById('conn-body');
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#6b7280;padding:30px">No connections found</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(function(c) {
+                    var data = JSON.stringify(c).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+                    return '<tr>'
+                        + '<td style="font-size:11px;color:#8892a4">' + (c.chain_name || '—') + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#e6e8eb">' + (c.from_system || '—') + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#e6e8eb">' + (c.to_system || '—') + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:11px;color:#a78bfa">' + (c.wh_type || 'K162') + '</td>'
+                        + '<td>' + sizeBadge(c.wh_size) + '</td>'
+                        + '<td>' + massPill(c.mass_status) + '</td>'
+                        + '<td>' + timePill(c.time_status) + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:10px;color:#6b7280">' + (c.sig_id_from || '—') + '</td>'
+                        + '<td style="font-family:\'Geist Mono\',monospace;font-size:10px;color:#6b7280">' + (c.sig_id_to || '—') + '</td>'
+                        + '<td style="font-size:11px;color:#6b7280">' + fmtDate(c.updated_at) + '</td>'
+                        + '<td>'
+                        + '<button class="btn-sm teal" onclick="openEditModal(\'' + c.id + '\',' + "'" + data + "'" + ')">Edit</button>'
+                        + '<button class="btn-sm" style="background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none" onclick="deleteConn(\'' + c.id + '\')">Del</button>'
+                        + '</td>'
+                        + '</tr>';
+                }).join('');
+            }).catch(function(){});
+    };
+
+    window.openEditModal = function(connId, dataStr) {
+        var data = JSON.parse(dataStr.replace(/&quot;/g, '"'));
+        document.getElementById('edit-conn-id').value = connId;
+        document.getElementById('edit-conn-type').value = data.wh_type || 'K162';
+        document.getElementById('edit-conn-size').value = data.wh_size || 'large';
+        document.getElementById('edit-conn-mass').value = data.mass_status || 'fresh';
+        document.getElementById('edit-conn-time').value = data.time_status || 'fresh';
+        document.getElementById('edit-conn-sig-from').value = data.sig_id_from || '';
+        document.getElementById('edit-conn-sig-to').value = data.sig_id_to || '';
+        document.getElementById('edit-conn-notes').value = data.notes || '';
+        document.getElementById('conn-edit-modal').style.display = 'flex';
+    };
+    window.closeConnEditModal = function() {
+        document.getElementById('conn-edit-modal').style.display = 'none';
+    };
+    window.submitConnEdit = function() {
+        var connId = document.getElementById('edit-conn-id').value;
+        var payload = {
+            wh_type: document.getElementById('edit-conn-type').value.trim(),
+            wh_size: document.getElementById('edit-conn-size').value,
+            mass_status: document.getElementById('edit-conn-mass').value,
+            time_status: document.getElementById('edit-conn-time').value,
+            sig_id_from: document.getElementById('edit-conn-sig-from').value.trim() || null,
+            sig_id_to: document.getElementById('edit-conn-sig-to').value.trim() || null,
+            notes: document.getElementById('edit-conn-notes').value.trim() || null,
+        };
+        fetch('/api/connections/' + connId, {
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+        }).then(function(r){ return r.json(); })
+          .then(function() {
+            closeConnEditModal();
+            loadConnections();
+            ewcmToast('Connection updated', 'success');
+        }).catch(function(){ ewcmToast('Error updating connection', 'error'); });
+    };
+    window.deleteConn = function(connId) {
+        if (!confirm('Delete this connection?')) return;
+        fetch('/api/connections/' + connId, {method: 'DELETE'})
+            .then(function(){ loadConnections(); ewcmToast('Deleted', 'success'); })
+            .catch(function(){ ewcmToast('Error', 'error'); });
+    };
+
+    loadConnections();
+})();
+</script>
